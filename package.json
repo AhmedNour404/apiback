@@ -1,21 +1,14 @@
 {
-  "name": "api",
+  "name": "apiback",
   "version": "1.0.0",
-  "main": "send.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node send.js"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
-    "body-parser": "^2.2.0",
-    "cors": "^2.8.5",
-    "docx": "^9.5.1",
-    "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "nodemailer": "^7.0.9"
+    "nodemailer": "^7.0.9",
+    "dotenv": "^17.2.3"
   }
 }
