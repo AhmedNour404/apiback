@@ -8,7 +8,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-app.post("/api/send", async (req, res) => {
+app.post("/send", async (req, res) => {
   const { name, phone, message } = req.body;
 
   try {
@@ -34,8 +34,7 @@ app.post("/api/send", async (req, res) => {
   }
 });
 
-// ✅ Listen on the port provided by Vercel or default to 3000
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+app.listen(port, () => console.log(`✅ Server running on port ${port}`));
 
 export default app;
