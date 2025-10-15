@@ -1,14 +1,13 @@
-// server.js
-import express from "express";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const app = express();
-app.use(express.json());
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
-app.post("/send", async (req, res) => {
   const { name, phone, message } = req.body;
 
   try {
@@ -32,9 +31,4 @@ app.post("/send", async (req, res) => {
     console.error(err);
     return res.status(500).json({ success: false, error: err.message });
   }
-});
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`✅ Server running on port ${port}`));
-
-export default app;
+}
