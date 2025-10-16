@@ -1,38 +1,32 @@
 // pages/api/sendEmail.js
-import nodemailer from "nodemailer";
+import sendgrid from "@sendgrid/mail";
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
+sendgrid.setApiKey(SENDGRID_API_KEY);
+
+async function handleRequest(request) {
+  if (request.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
   }
 
-  const { name, email, message } = req.body;
+  const { name, phone, message } = await request.json();
 
-  if (!name || !email || !message) {
-    return res.status(400).json({ message: "All fields are required" });
+  if (!name || !phone || !message) {
+    return new Response(JSON.stringify({ success: false, error: "Missing fields" }), { status: 400 });
   }
 
   try {
-    // Gmail SMTP transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER, // your Gmail address
-        pass: process.env.GMAIL_PASS  // your Gmail App Password
-      }
+    await sendgrid.send({
+      to: "your-email@gmail.com",
+      from: "your-email@gmail.com", 
+      subject: `New message from ${name}`,
+      text: `Name: ${name}\nPhone: ${phone}\nMessage:\n${message}`,
     });
 
-    // Send the email
-    await transporter.sendMail({
-      from: `"${name}" <${email}>`,       // sender info
-      to: process.env.GMAIL_USER,         // your Gmail inbox
-      subject: "New Form Submission",
-      text: message
-    });
+    return new Response(JSON.stringify({ success: true, message: "Email sent successfully" }), { status: 200 });
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500 });
+  }
+}
 
-    return res.status(200).json({ message: "Email sent successfully!" });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Error sending email", error });
   }
 }
