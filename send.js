@@ -1,18 +1,22 @@
-import express from "express";
 import nodemailer from "nodemailer";
-import dotenv from "dotenv";
-import cors from "cors";
 
-dotenv.config();
+// This file becomes a Vercel serverless function.
+// It will be available at https://yourdomain.vercel.app/api/send
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+export default async function handler(req, res) {
+  // Only allow POST requests
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
-app.post("/send", async (req, res) => {
   const { name, phone, message } = req.body;
 
+  if (!name || !phone || !message) {
+    return res.status(400).json({ success: false, error: "Missing required fields" });
+  }
+
   try {
+    // Configure the transporter (using environment variables set in Vercel)
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -21,6 +25,7 @@ app.post("/send", async (req, res) => {
       },
     });
 
+    // Send the email
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: process.env.EMAIL_USER,
@@ -28,12 +33,9 @@ app.post("/send", async (req, res) => {
       text: `Name: ${name}\nPhone: ${phone}\nMessage:\n${message}`,
     });
 
-    res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, message: "Email sent successfully" });
   } catch (err) {
     console.error("Email error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, error: err.message });
   }
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+}
