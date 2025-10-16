@@ -1,41 +1,60 @@
-import nodemailer from "nodemailer";
+// workers-send-email.js
 
-// This file becomes a Vercel serverless function.
-// It will be available at https://yourdomain.vercel.app/api/send
+export default {
+  async fetch(request) {
+    if (request.method !== "POST") {
+      return new Response(JSON.stringify({ message: "Method not allowed" }), {
+        status: 405,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-export default async function handler(req, res) {
-  // Only allow POST requests
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+    const { name, phone, message } = await request.json();
 
-  const { name, phone, message } = req.body;
+    if (!name || !phone || !message) {
+      return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-  if (!name || !phone || !message) {
-    return res.status(400).json({ success: false, error: "Missing required fields" });
-  }
+    try {
+      const mailgunApiKey = MAILGUN_API_KEY; // add as Cloudflare environment variable
+      const mailgunDomain = MAILGUN_DOMAIN; // add as Cloudflare environment variable
+      const toEmail = EMAIL_TO; // add as Cloudflare environment variable
 
-  try {
-    // Configure the transporter (using environment variables set in Vercel)
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+      const formData = new URLSearchParams();
+      formData.append("from", `GlowGym <mailgun@${mailgunDomain}>`);
+      formData.append("to", toEmail);
+      formData.append("subject", `New message from ${name}`);
+      formData.append("text", `Name: ${name}\nPhone: ${phone}\nMessage:\n${message}`);
 
-    // Send the email
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: `New message from ${name}`,
-      text: `Name: ${name}\nPhone: ${phone}\nMessage:\n${message}`,
-    });
+      const response = await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
 
-    return res.status(200).json({ success: true, message: "Email sent successfully" });
-  } catch (err) {
-    console.error("Email error:", err);
-    return res.status(500).json({ success: false, error: err.message });
-  }
-}
+      if (!response.ok) {
+        const errorText = await response.text();
+        return new Response(JSON.stringify({ success: false, error: errorText }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, message: "Email sent successfully" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  },
+};
