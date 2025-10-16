@@ -1,60 +1,38 @@
-// workers-send-email.js
+// pages/api/sendEmail.js
+import nodemailer from "nodemailer";
 
-export default {
-  async fetch(request) {
-    if (request.method !== "POST") {
-      return new Response(JSON.stringify({ message: "Method not allowed" }), {
-        status: 405,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
 
-    const { name, phone, message } = await request.json();
+  const { name, email, message } = req.body;
 
-    if (!name || !phone || !message) {
-      return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
 
-    try {
-      const mailgunApiKey = MAILGUN_API_KEY; // add as Cloudflare environment variable
-      const mailgunDomain = MAILGUN_DOMAIN; // add as Cloudflare environment variable
-      const toEmail = EMAIL_TO; // add as Cloudflare environment variable
-
-      const formData = new URLSearchParams();
-      formData.append("from", `GlowGym <mailgun@${mailgunDomain}>`);
-      formData.append("to", toEmail);
-      formData.append("subject", `New message from ${name}`);
-      formData.append("text", `Name: ${name}\nPhone: ${phone}\nMessage:\n${message}`);
-
-      const response = await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData.toString(),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return new Response(JSON.stringify({ success: false, error: errorText }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        });
+  try {
+    // Gmail SMTP transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.GMAIL_USER, // your Gmail address
+        pass: process.env.GMAIL_PASS  // your Gmail App Password
       }
+    });
 
-      return new Response(JSON.stringify({ success: true, message: "Email sent successfully" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } catch (err) {
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-  },
-};
+    // Send the email
+    await transporter.sendMail({
+      from: `"${name}" <${email}>`,       // sender info
+      to: process.env.GMAIL_USER,         // your Gmail inbox
+      subject: "New Form Submission",
+      text: message
+    });
+
+    return res.status(200).json({ message: "Email sent successfully!" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error sending email", error });
+  }
+}
